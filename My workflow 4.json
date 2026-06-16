@@ -1,0 +1,482 @@
+{
+  "name": "My workflow 4",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        -32
+      ],
+      "id": "add0f930-3c40-444d-bb26-6e01e5655adc",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Articles:\n\n{{ JSON.stringify($json.articles, null, 2) }}\n\nYou are a startup discovery analyst.\n\nTask:\nExtract ONLY startup/company names that are explicitly named in the article title.\n\nFor each company return:\n\nstartup_name\nsource_url\n\nSTRICT RULES:\n\n1. The company name must appear verbatim in the article title.\n\n2. Return only proper company/startup names.\n\n3. Ignore:\n   - investors\n   - venture funds\n   - people\n   - products\n   - technologies\n   - locations\n   - industries\n\n4. Reject generic phrases such as:\n   - AI startup\n   - biotech startup\n   - Colorado startup\n   - stealth startup\n   - YC startup\n\n5. If the title does not contain a clear company name, skip the article.\n\n6. Do not infer names from URLs.\n\n7. Do not guess.\n\n8. Do not create names.\n\n9. If uncertain, skip the article.\n\nReturn one record per startup.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a venture capital analyst.\n\nYour task is ONLY startup discovery.\n\nGiven a list of article titles and URLs:\n\n1. Identify startups explicitly mentioned.\n2. Extract the startup name.\n3. Return the article URL as source_url.\n\nDo not perform analysis.\nDo not estimate markets.\nDo not score startups.\nDo not create investment theses.\n\nOnly identify startups."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        432,
+        -32
+      ],
+      "id": "03c5dab4-413a-4496-91d1-1adae84cf006",
+      "name": "Startup Discovery Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        432,
+        192
+      ],
+      "id": "6817d51a-6316-4e5b-987a-05e846328a00",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "xMoJz7Dim3AOSGBr",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"output\": [\n    {\n      \"startup_name\": \"\",\n      \"source_url\": \"\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        576,
+        192
+      ],
+      "id": "b28bd8d2-b701-4760-8f35-5c8393021d1a",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        704,
+        -32
+      ],
+      "id": "99b3917c-ec72-486f-8581-ce9e791e4629",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "startups",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1488,
+        -32
+      ],
+      "id": "f74a0a8a-8af2-404b-80fb-8b6223b3e018",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search_by_date?tags=story&query=\"raised\"",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        144,
+        -32
+      ],
+      "id": "7090d14e-fd6d-4522-ba17-d10680ae79c8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const hits = $json.hits || [];\n\nreturn [\n  {\n    json: {\n      articles: hits.map(item => ({\n        title: item.title,\n        url: item.url,\n      }))\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        -32
+      ],
+      "id": "c9eaa1a8-ae93-4d4a-a8ee-d3bdd9577816",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://google.serper.dev/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-KEY",
+              "value": "YOUR KEY"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"q\": \"{{ $json.startup_name }} startup founders funding investors LinkedIn Crunchbase\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        880,
+        -32
+      ],
+      "id": "5e075510-8edf-4666-b565-baa98cdc86b4",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{\n\"Title: \" + $json.title +\n\"\\n\\nSnippet: \" + $json.snippet +\n\"\\n\\nLink: \" + $json.link\n}}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a startup research analyst.\n\nExtract startup information from the search result provided.\n\nRules:\n- Return ONLY valid JSON matching the schema.\n- Do not wrap JSON in quotes.\n- Do not use markdown.\n- Do not explain anything.\n- Do not invent facts.\n- If a field cannot be determined, return \"Unknown\".\n- startup_name must be an actual company/startup name.\n- Ignore investors, VCs, founders, journalists, and generic phrases like \"AI startup\" unless they are the startup itself."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1232,
+        -32
+      ],
+      "id": "ca24c0ce-3477-4e7c-ba93-63f7c5f114fc",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1216,
+        192
+      ],
+      "id": "6b175c6a-f20c-4a06-80c0-4e0b17ce77a9",
+      "name": "OpenRouter Chat Model2",
+      "credentials": {
+        "openRouterApi": {
+          "id": "xMoJz7Dim3AOSGBr",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"startup_name\": \"\",\n  \"funding_round_type\": \"\",\n  \"amount\": \"\",\n  \"date\": \"\",\n  \"investors\": [],\n  \"description\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1392,
+        192
+      ],
+      "id": "8231f239-05f6-4e31-8aec-9b51eedacf2f",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const organic = $json.organic || [];\n\nreturn organic.slice(0, 5).map(result => ({\n  json: {\n    title: result.title || \"\",\n    snippet: result.snippet || \"\",\n    link: result.link || \"\"\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -32
+      ],
+      "id": "4828164b-5eb8-403b-b1d1-aa23402e2034",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const startups = $json.startups\n  .map(item => item.output)\n  .filter(startup =>\n    startup &&\n    startup.startup_name &&\n    startup.startup_name !== \"Unknown\"\n  );\n\nconst uniqueStartups = [\n  ...new Map(\n    startups.map(s => [s.startup_name, s])\n  ).values()\n];\n\nreturn [\n  {\n    json: {\n      startups: uniqueStartups\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        -32
+      ],
+      "id": "bdc7d729-26ba-44e9-8605-b57a3d6e04c5",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ JSON.stringify($json.startups) }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a venture capital analyst.\n\nYou will receive a list of startup records.\n\nIMPORTANT RULES:\n\n- Use ONLY startups present in the provided input.\n- Do NOT invent startup names.\n- Do NOT add companies that are not in the input.\n- Base rankings only on the provided fields.\n- Missing information should reduce confidence.\n- Rank startups using available funding, investors, funding stage, and description.\n- Select the top 3 startups only.\n\nReturn only valid JSON matching the required schema.\nDo not use markdown.\nDo not explain outside JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1904,
+        -32
+      ],
+      "id": "b2c143a6-7c8d-4b82-802b-324a0ff73ed8",
+      "name": "Top Startup Selector"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"top_startups\": [\n    {\n      \"startup_name\": \"\",\n      \"score\": 0,\n      \"reason\": \"\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2080,
+        176
+      ],
+      "id": "8276ce0f-fff5-4b3e-a032-b879e4679e89",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-120b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        192
+      ],
+      "id": "baf624ed-66ec-4f0d-ac29-34772704fcae",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "xMoJz7Dim3AOSGBr",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Startup Discovery Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Startup Discovery Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Startup Discovery Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Startup Discovery Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Top Startup Selector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Top Startup Selector",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Top Startup Selector",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "27db38d6-b75a-4676-9f9b-53ce9af83b2f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2f401b63e3ff481ee731a050ce482cd50ada2782bc7b18d11c482d0f143c3f77"
+  },
+  "nodeGroups": [],
+  "id": "NkoLyoLU1zDRCriP",
+  "tags": []
+}
